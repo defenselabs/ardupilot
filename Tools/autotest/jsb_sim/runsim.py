@@ -5,7 +5,7 @@
 from __future__ import print_function
 import atexit
 import errno
-import fdpexpect
+import pexpect.fdpexpect
 import math
 import os
 import select
@@ -236,7 +236,7 @@ jsb.expect("JSBSim Execution beginning")
 print("JSBSim console on %s" % str(jsb_out_address))
 jsb_out = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 jsb_out.connect(jsb_out_address)
-jsb_console = fdpexpect.fdspawn(jsb_out.fileno(), logfile=sys.stdout)
+jsb_console = pexpect.fdpexpect.fdspawn(jsb_out.fileno(), logfile=sys.stdout)
 jsb_console.delaybeforesend = 0
 
 # setup input from jsbsim

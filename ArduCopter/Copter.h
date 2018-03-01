@@ -206,6 +206,7 @@ private:
     RC_Channel *channel_pitch;
     RC_Channel *channel_throttle;
     RC_Channel *channel_yaw;
+    RC_Channel *channel_7;
 
     // Dataflash
     DataFlash_Class DataFlash;
@@ -644,6 +645,7 @@ private:
     void update_super_simple_bearing(bool force_update);
     void read_AHRS(void);
     void update_altitude();
+    void as_loop();
 
     // Attitude.cpp
     float get_smoothing_gain();
@@ -947,6 +949,8 @@ private:
     void userhook_SlowLoop();
     void userhook_SuperSlowLoop();
 
+    // airspace.cpp
+    void as_take_control();
 #include "mode.h"
 
     Mode *flightmode;

@@ -84,6 +84,7 @@
  */
 const AP_Scheduler::Task Copter::scheduler_tasks[] = {
     SCHED_TASK(rc_loop,              100,    130),
+    SCHED_TASK(as_loop,               10,     50),
     SCHED_TASK(throttle_loop,         50,     75),
     SCHED_TASK(update_GPS,            50,    200),
 #if OPTFLOW == ENABLED
@@ -246,6 +247,12 @@ void Copter::fast_loop()
     if (should_log(MASK_LOG_ANY)) {
         Log_Sensor_Health();
     }
+}
+
+// airspace loop - run airspace specific tasks
+void Copter::as_loop()
+{
+    as_take_control();
 }
 
 // rc_loops - reads user input from transmitter/receiver
