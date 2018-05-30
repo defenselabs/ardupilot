@@ -37,7 +37,9 @@ Copter::as_take_control (  )
         }
     }else{
         //gcs().send_text(MAV_SEVERITY_WARNING, "GUIDED");
-        set_mode(GUIDED, MODE_REASON_GCS_FAILSAFE);
+        if(control_mode != GUIDED){
+            set_mode(GUIDED, MODE_REASON_GCS_FAILSAFE);
+        }
     }
 }		/* -----  end of function as_take_control  ----- */
 
