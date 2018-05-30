@@ -31,14 +31,14 @@ Copter::as_take_control (  )
 {
     if((int)channel_7->get_control_in() < 500){
         //gcs().send_text(MAV_SEVERITY_WARNING, "STABILIZE");
-        if(control_mode == GUIDED){
+        if(control_mode == GUIDED_NO_GPS){
             gcs().send_text(MAV_SEVERITY_WARNING, "Ch7 triggered. Requesting LOITER");
             set_mode(LOITER, MODE_REASON_GCS_FAILSAFE);
         }
     }else{
         //gcs().send_text(MAV_SEVERITY_WARNING, "GUIDED");
-        if(control_mode != GUIDED){
-            set_mode(GUIDED, MODE_REASON_GCS_FAILSAFE);
+        if(control_mode != GUIDED_NO_GPS){
+            set_mode(GUIDED_NO_GPS, MODE_REASON_GCS_FAILSAFE);
         }
     }
 }		/* -----  end of function as_take_control  ----- */
