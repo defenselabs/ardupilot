@@ -26,7 +26,8 @@
 #include <AP_HAL/AP_HAL.h>
 #include <GCS_MAVLink/GCS_MAVLink.h>
 
-#define SERIALMANAGER_NUM_PORTS 6
+// we have hal.uartA to hal.uartG
+#define SERIALMANAGER_NUM_PORTS 7
 
  // console default baud rates and buffer sizes
 #ifdef HAL_SERIAL0_BAUD_DEFAULT
@@ -72,7 +73,6 @@
 #define AP_SERIALMANAGER_SBUS1_BUFSIZE_RX     16
 #define AP_SERIALMANAGER_SBUS1_BUFSIZE_TX     32
 
-
 class AP_SerialManager {
 public:
     AP_SerialManager();
@@ -98,7 +98,9 @@ public:
         SerialProtocol_Aerotenna_uLanding      = 12, // Ulanding support - deprecated, users should use Rangefinder
         SerialProtocol_Beacon = 13,
         SerialProtocol_Volz = 14,                    // Volz servo protocol
-        SerialProtocol_Sbus1 = 15
+        SerialProtocol_Sbus1 = 15,
+        SerialProtocol_ESCTelemetry = 16,
+        SerialProtocol_Devo_Telem = 17,
     };
 
     // get singleton instance

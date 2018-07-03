@@ -9,6 +9,13 @@
 
 class AP_Arming {
 public:
+
+    AP_Arming();
+
+    /* Do not allow copies */
+    AP_Arming(const AP_Arming &other) = delete;
+    AP_Arming &operator=(const AP_Arming&) = delete;
+
     enum ArmingChecks {
         ARMING_CHECK_NONE       = 0x0000,
         ARMING_CHECK_ALL        = 0x0001,
@@ -27,9 +34,10 @@ public:
     };
 
     enum ArmingMethod {
-        NONE = 0,
         RUDDER,
-        MAVLINK
+        MAVLINK,
+        AUXSWITCH,
+        MOTORTEST,
     };
 
     enum ArmingRequired {
@@ -40,12 +48,13 @@ public:
 
     // these functions should not be used by Copter which holds the armed state in the motors library
     ArmingRequired arming_required();
-    virtual bool arm(uint8_t method);
+    virtual bool arm(ArmingMethod method, bool do_arming_checks=true);
     bool disarm();
     bool is_armed();
 
     // get bitmask of enabled checks
     uint16_t get_enabled_checks();
+
 
     // pre_arm_checks() is virtual so it can be modified in a vehicle specific subclass
     virtual bool pre_arm_checks(bool report);
@@ -53,7 +62,7 @@ public:
     // some arming checks have side-effects, or require some form of state
     // change to have occurred, and thus should not be done as pre-arm
     // checks.  Those go here:
-    bool arm_checks(uint8_t method);
+    bool arm_checks(ArmingMethod method);
 
     // get expected magnetic field strength
     uint16_t compass_magfield_expected() const;
@@ -61,8 +70,6 @@ public:
     static const struct AP_Param::GroupInfo        var_info[];
 
 protected:
-    AP_Arming(const AP_AHRS &ahrs_ref, const AP_Baro &baro, Compass &compass,
-              const AP_BattMonitor &battery);
 
     // Parameters
     AP_Int8                 require;
@@ -70,16 +77,9 @@ protected:
     AP_Float                accel_error_threshold;
     AP_Float                _min_voltage[AP_BATT_MONITOR_MAX_INSTANCES];
 
-    // references
-    const AP_AHRS           &ahrs;
-    const AP_Baro           &barometer;
-    Compass                 &_compass;
-    const AP_BattMonitor    &_battery;
-
     // internal members
     bool                    armed:1;
     bool                    logging_available:1;
-    uint8_t                 arming_method;          // how the vehicle was armed
     uint32_t                last_accel_pass_ms[INS_MAX_INSTANCES];
     uint32_t                last_gyro_pass_ms[INS_MAX_INSTANCES];
 
@@ -105,8 +105,19 @@ protected:
 
     bool manual_transmitter_checks(bool report);
 
-    virtual enum HomeState home_status() const = 0;
-
+    bool servo_checks(bool report) const;
     bool rc_checks_copter_sub(bool display_failure, const RC_Channel *channels[4], const bool check_min_max = true) const;
+
+    // returns true if a particular check is enabled
+    bool check_enabled(const enum AP_Arming::ArmingChecks check) const;
+    // returns a mavlink severity which should be used if a specific check fails
+    MAV_SEVERITY check_severity(const enum AP_Arming::ArmingChecks check) const;
+    // handle the case where a check fails
+    void check_failed(const enum AP_Arming::ArmingChecks check, bool report, const char *fmt, ...) const;
+
+private:
+
+    bool ins_accels_consistent(const AP_InertialSensor &ins);
+    bool ins_gyros_consistent(const AP_InertialSensor &ins);
 
 };

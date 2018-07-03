@@ -28,7 +28,7 @@ extern const AP_HAL::HAL& hal;
 bool ToneAlarm_ChibiOS::init()
 {
     // open the tone alarm device
-    _initialized = hal.util->toneAlarm_init();
+    bool _initialized = hal.util->toneAlarm_init();
     if (!_initialized) {
         hal.console->printf("AP_Notify: Failed to initialise ToneAlarm");
         return false;
@@ -52,11 +52,6 @@ bool ToneAlarm_ChibiOS::play_tune(uint8_t tune_number)
 // update - updates led according to timed_updated.  Should be called at 50Hz
 void ToneAlarm_ChibiOS::update()
 {
-    // exit immediately if we haven't initialised successfully
-    if (!_initialized) {
-        return;
-    }
-
     // exit if buzzer is not enabled
     if (pNotify->buzzer_enabled() == false) {
         return;
@@ -76,6 +71,15 @@ void ToneAlarm_ChibiOS::update()
         }else{
             // disarming tune
             play_tune(TONE_NOTIFY_NEUTRAL_TUNE);
+        }
+    }
+
+    // notify the user when their mode change was successful
+    if (AP_Notify::events.user_mode_change) {
+        if (AP_Notify::flags.armed) {
+            play_tune(TONE_NOTIFY_MODE_CHANGE_LOUD);
+        } else {
+            play_tune(TONE_NOTIFY_MODE_CHANGE_SOFT);
         }
     }
 

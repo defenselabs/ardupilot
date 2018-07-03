@@ -26,26 +26,13 @@ enum ch7_option {
     CH7_AUTO            = 8,
     CH7_RTL             = 9,
     CH7_SMART_RTL       = 10,
-    CH7_GUIDED          = 11
+    CH7_GUIDED          = 11,
+    CH7_LOITER          = 12
 };
 
 // HIL enumerations
 #define HIL_MODE_DISABLED 0
 #define HIL_MODE_SENSORS  1
-
-// Auto Pilot modes
-// ----------------
-enum mode {
-    MANUAL       = 0,
-    ACRO         = 1,
-    STEERING     = 3,
-    HOLD         = 4,
-    AUTO         = 10,
-    RTL          = 11,
-    SMART_RTL    = 12,
-    GUIDED       = 15,
-    INITIALISING = 16
-};
 
 // types of failsafe events
 #define FAILSAFE_EVENT_THROTTLE (1<<0)
@@ -145,7 +132,8 @@ enum pilot_steer_type_t {
 enum frame_class {
     FRAME_UNDEFINED = 0,
     FRAME_ROVER = 1,
-    FRAME_BOAT = 2
+    FRAME_BOAT = 2,
+    FRAME_BALANCEBOT = 3,
 };
 
 #define AUX_SWITCH_PWM_TRIGGER_HIGH 1800   // pwm value above which the ch7 or ch8 option will be invoked

@@ -26,13 +26,14 @@
 #include "ToneAlarm_Linux.h"
 #include "ToneAlarm_ChibiOS.h"
 #include "ToneAlarm_PX4.h"
-#include "ToshibaLED.h"
 #include "ToshibaLED_I2C.h"
 #include "VRBoard_LED.h"
 #include "DiscreteRGBLed.h"
 #include "DiscoLED.h"
 #include "Led_Sysfs.h"
+#include "UAVCAN_RGB_LED.h"
 #include <stdio.h>
+#include "AP_BoardLED2.h"
 
 extern const AP_HAL::HAL& hal;
 
@@ -60,6 +61,7 @@ const AP_Param::GroupInfo AP_Notify::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("BUZZ_ENABLE", 1, AP_Notify, _buzzer_enable, BUZZER_ON),
 
+
     // @Param: LED_OVERRIDE
     // @DisplayName: Setup for MAVLink LED override
     // @Description: This sets up the board RGB LED for override by MAVLink. Normal notify LED control is disabled
@@ -74,12 +76,23 @@ const AP_Param::GroupInfo AP_Notify::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("DISPLAY_TYPE", 3, AP_Notify, _display_type, 0),
 
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4 && CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_PX4_V3
     // @Param: OREO_THEME
     // @DisplayName: OreoLED Theme
     // @Description: Enable/Disable Solo Oreo LED driver, 0 to disable, 1 for Aircraft theme, 2 for Rover theme
     // @Values: 0:Disabled,1:Aircraft,2:Rover
     // @User: Advanced
     AP_GROUPINFO("OREO_THEME", 4, AP_Notify, _oreo_theme, 0),
+#endif // CONFIG_HAL_BOARD == HAL_BOARD_PX4 && CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_PX4_V3
+
+#if !defined(HAL_BUZZER_PIN)
+    // @Param: BUZZ_PIN
+    // @DisplayName: Buzzer pin
+    // @Description: Enables to connect active buzzer to arbitrary pin. Requires 3-pin buzzer or additional MOSFET!
+    // @Values: 0:Disabled
+    // @User: Advanced
+    AP_GROUPINFO("BUZZ_PIN", 5, AP_Notify, _buzzer_pin, 0),
+#endif
 
     AP_GROUPEND
 };
@@ -101,7 +114,19 @@ struct AP_Notify::notify_events_type AP_Notify::events;
 NotifyDevice *AP_Notify::_devices[CONFIG_NOTIFY_DEVICES_MAX];
 uint8_t AP_Notify::_num_devices;
 
-#define ADD_BACKEND(backend) do { _devices[_num_devices++] = backend; if (_num_devices >= CONFIG_NOTIFY_DEVICES_MAX) return;} while(0)
+void AP_Notify::add_backend_helper(NotifyDevice *backend)
+{
+    _devices[_num_devices] = backend;
+    _devices[_num_devices]->pNotify = this;
+    if(!_devices[_num_devices]->init()) {
+        delete _devices[_num_devices];
+        _devices[_num_devices] = nullptr;
+    } else {
+      _num_devices++;
+    }
+}
+
+#define ADD_BACKEND(backend) do { add_backend_helper(backend); if (_num_devices >= CONFIG_NOTIFY_DEVICES_MAX) return;} while(0)
 
 // add notify backends to _devices array
 void AP_Notify::add_backends(void)
@@ -141,8 +166,19 @@ void AP_Notify::add_backends(void)
 
 // Notify devices for ChibiOS boards
 #elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
-    ADD_BACKEND(new ToneAlarm_ChibiOS());
+# ifdef HAL_HAVE_PIXRACER_LED
     ADD_BACKEND(new PixRacerLED());
+# elif (defined(HAL_GPIO_A_LED_PIN) && defined(HAL_GPIO_B_LED_PIN) && defined(HAL_GPIO_C_LED_PIN))
+    ADD_BACKEND(new AP_BoardLED());
+#else
+    ADD_BACKEND(new AP_BoardLED2());
+# endif
+#ifdef HAL_BUZZER_PIN
+    ADD_BACKEND(new Buzzer());
+#endif
+#ifdef HAL_PWM_ALARM
+    ADD_BACKEND(new ToneAlarm_ChibiOS());
+#endif
     ADD_BACKEND(new ToshibaLED_I2C(TOSHIBA_LED_I2C_BUS_EXTERNAL));
     ADD_BACKEND(new ToshibaLED_I2C(TOSHIBA_LED_I2C_BUS_INTERNAL));
     ADD_BACKEND(new Display());
@@ -180,6 +216,7 @@ void AP_Notify::add_backends(void)
     ADD_BACKEND(new RCOutputRGBLedInverted(12, 13, 14));
     ADD_BACKEND(new ToshibaLED_I2C(TOSHIBA_LED_I2C_BUS_EXTERNAL));
     ADD_BACKEND(new ToshibaLED_I2C(TOSHIBA_LED_I2C_BUS_INTERNAL));
+    ADD_BACKEND(new UAVCAN_RGB_LED(0));
 
   #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_BBBMINI
     ADD_BACKEND(new AP_BoardLED());
@@ -194,9 +231,6 @@ void AP_Notify::add_backends(void)
     ADD_BACKEND(new AP_BoardLED());
     ADD_BACKEND(new Buzzer());
     ADD_BACKEND(new Display());
-
-  #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_MINLURE
-    ADD_BACKEND(new RCOutputRGBLedOff(15, 13, 14, 255));
 
   #elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_ERLEBRAIN2 || \
       CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_PXFMINI
@@ -220,20 +254,11 @@ void AP_Notify::add_backends(void)
     ADD_BACKEND(new ToneAlarm_Linux());
   #endif
 
-#elif CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
-# ifdef HAL_HAVE_PIXRACER_LED
-    ADD_BACKEND(new PixRacerLED());
-# else
-    ADD_BACKEND(new AP_BoardLED());
-# endif
-    ADD_BACKEND(new ToshibaLED_I2C(TOSHIBA_LED_I2C_BUS_EXTERNAL));
-    ADD_BACKEND(new ToshibaLED_I2C(TOSHIBA_LED_I2C_BUS_INTERNAL));
-    ADD_BACKEND(new Display());
 #elif CONFIG_HAL_BOARD == HAL_BOARD_F4LIGHT
     ADD_BACKEND(new ToshibaLED_I2C(TOSHIBA_LED_I2C_BUS_EXTERNAL));
     ADD_BACKEND(new Display());
     ADD_BACKEND(new Buzzer());
-//    ADD_BACKEND(new AP_BoardLED2()); // needs AP_BoardLED2 in master
+    ADD_BACKEND(new AP_BoardLED2()); // needs AP_BoardLED2 in master
 #else
     ADD_BACKEND(new AP_BoardLED());
     ADD_BACKEND(new ToshibaLED_I2C(TOSHIBA_LED_I2C_BUS_EXTERNAL));
@@ -245,26 +270,14 @@ void AP_Notify::add_backends(void)
 // initialisation
 void AP_Notify::init(bool enable_external_leds)
 {
-    // add all the backends
-    add_backends();
-
     // clear all flags and events
     memset(&AP_Notify::flags, 0, sizeof(AP_Notify::flags));
     memset(&AP_Notify::events, 0, sizeof(AP_Notify::events));
 
-    // clear flight mode string and text buffer
-    memset(_flight_mode_str, 0, sizeof(_flight_mode_str));
-    memset(_send_text, 0, sizeof(_send_text));
-    _send_text_updated_millis = 0;
-
     AP_Notify::flags.external_leds = enable_external_leds;
 
-    for (uint8_t i = 0; i < _num_devices; i++) {
-        if (_devices[i] != nullptr) {
-            _devices[i]->pNotify = this;
-            _devices[i]->init();
-        }
-    }
+    // add all the backends
+    add_backends();
 }
 
 // main update function, called at 50Hz
